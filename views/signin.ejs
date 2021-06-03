@@ -1,0 +1,10 @@
+<%- include('partials/header.ejs') %>
+
+<h1>Sign In</h1>
+<form action ="/signin" method="post">
+    <p><%= signInMessage %></p>
+    <input type="password" name="password">
+    <button class="btn" type="submit">Sign In</button>
+</form>
+
+<%- include('partials/footer.ejs') %>
