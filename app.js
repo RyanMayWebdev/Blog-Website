@@ -1,49 +1,131 @@
 //jshint esversion:6
 const lodash = require('lodash');
 const express = require("express");
+const session = require('express-session');
 const ejs = require("ejs");
-
-const homeStartingContent = "Lacus vel facilisis volutpat est velit egestas dui id ornare. Semper auctor neque vitae tempus quam. Sit amet cursus sit amet dictum sit amet justo. Viverra tellus in hac habitasse. Imperdiet proin fermentum leo vel orci porta. Donec ultrices tincidunt arcu non sodales neque sodales ut. Mattis molestie a iaculis at erat pellentesque adipiscing. Magnis dis parturient montes nascetur ridiculus mus mauris vitae ultricies. Adipiscing elit ut aliquam purus sit amet luctus venenatis lectus. Ultrices vitae auctor eu augue ut lectus arcu bibendum at. Odio euismod lacinia at quis risus sed vulputate odio ut. Cursus mattis molestie a iaculis at erat pellentesque adipiscing.";
-const aboutContent = "Hac habitasse platea dictumst vestibulum rhoncus est pellentesque. Dictumst vestibulum rhoncus est pellentesque elit ullamcorper. Non diam phasellus vestibulum lorem sed. Platea dictumst quisque sagittis purus sit. Egestas sed sed risus pretium quam vulputate dignissim suspendisse. Mauris in aliquam sem fringilla. Semper risus in hendrerit gravida rutrum quisque non tellus orci. Amet massa vitae tortor condimentum lacinia quis vel eros. Enim ut tellus elementum sagittis vitae. Mauris ultrices eros in cursus turpis massa tincidunt dui.";
-const contactContent = "Scelerisque eleifend donec pretium vulputate sapien. Rhoncus urna neque viverra justo nec ultrices. Arcu dui vivamus arcu felis bibendum. Consectetur adipiscing elit duis tristique. Risus viverra adipiscing at in tellus integer feugiat. Sapien nec sagittis aliquam malesuada bibendum arcu vitae. Consequat interdum varius sit amet mattis. Iaculis nunc sed augue lacus. Interdum posuere lorem ipsum dolor sit amet consectetur adipiscing elit. Pulvinar elementum integer enim neque. Ultrices gravida dictum fusce ut placerat orci nulla. Mauris in aliquam sem fringilla ut morbi tincidunt. Tortor posuere ac ut consequat semper viverra nam libero.";
-
 const app = express();
-let newPost = [];
-let signIn = "Please enter your password";
-let authenticated = false;
-app.set('view engine', 'ejs');
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
+const passport = require('passport');
+const LocalStrategy = require('passport-local').Strategy;
+const mongoose = require('mongoose');
+const {
+  Schema
+} = mongoose;
 
+const aboutContent = "Hey, I'm Ryan May, web developer and this is a blog site I created in order to test my knowledge of both front end and backend tech.";
+let DBpassword = process.env.dbpassword;
+
+
+
+
+app.set('view engine', 'ejs');
 app.use(express.urlencoded({
   extended: true
 }));
 app.use(express.static("public"));
+app.use(session({
+  secret: process.env.Secret,
+  resave: false,
+  saveUninitialized: false
+}));
+app.use(passport.initialize());
+app.use(passport.session());
 
+mongoose.connect(`mongodb+srv://Admin:${DBpassword}@webdevblog.l4je9.mongodb.net/BlogDB`, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+});
+
+const postSchema = new mongoose.Schema({
+  name: String,
+  post: String,
+  user: String
+});
+
+const blogPost = mongoose.model('blogPost', postSchema);
+
+const userSchema = new Schema({
+  username: String,
+  password: String,
+});
+
+
+const User = mongoose.model('user', userSchema);
+
+passport.serializeUser(function (user, done) {
+  done(null, user.id);
+});
+
+passport.deserializeUser(function (id, done) {
+  User.findById(id, function (err, user) {
+    done(err, user);
+  });
+});
+
+passport.use(new LocalStrategy(
+  function (username, password, done) {
+    User.findOne({
+      username: username
+    }, (err, user) => {
+      if (err) {
+        return done(err);
+      } else if (!user) {
+        return done(null, false);
+      } else {
+        bcrypt.compare(password, user.password, (err, result) => {
+          if (err) {
+            return done(err)
+          }
+          if (!result) {
+            return done(null, false)
+          } else {
+            return done(null, user);
+          }
+        })
+      }
+
+    })
+  }
+));
 
 app.get('/', (req, res) => {
-  res.render('home', {
-    homeContent: homeStartingContent,
-    post: newPost,
-    passwordCorrect: authenticated
-  });
+  res.render('welcome');
+});
+
+app.get('/home', (req, res) => {
+  if (req.isAuthenticated()) {
+    blogPost.find((err, posts) => {
+      res.render('home', {
+        posts: posts
+      });
+    })
+  } else {
+    res.redirect('/signin');
+  }
 })
 
 app.get('/posts/:postId', (req, res) => {
-  let match = false;
-  let searchFor = lodash.lowerCase(req.params.postId);
-  console.log(searchFor);
-  newPost.forEach((index) => {
-    let indexTitle = lodash.lowerCase(index.title);
-    if (indexTitle.includes(searchFor)) {
-      let position = newPost.indexOf(index);
-      match = true;
-      res.render('post', {
-        post: newPost[position]
-      });
-    } 
-  })
-  if (!match){
-    res.send("<h1>404 Error</h1><p>Page does not exist</p>");
-  }
+  let searchFor = lodash.capitalize(req.params.postId);
+  console.log(`post searched for was" ${searchFor}`);
+  let body;
+
+  blogPost.findOne({
+    name: searchFor
+  }, (err, item) => {
+    if (!err) {
+      if (item) {
+        body = item.post;
+        res.render('post', {
+          postTitle: searchFor,
+          postBody: body
+        });
+      } else {
+        res.send("<h1>404 Error</h1><p>Page does not exist</p>");
+      }
+    }
+  });
+
 })
 
 app.get('/about', (req, res) => {
@@ -52,49 +134,76 @@ app.get('/about', (req, res) => {
   });
 })
 
-app.get('/contact', (req, res) => {
-  res.render('contact', {
-    content: contactContent
-  });
-})
-
 app.get('/compose', (req, res) => {
-  res.render('compose', {
-    passwordCorrect: authenticated
-  });
+  if (req.isAuthenticated()) {
+    res.render('compose');
+  } else {
+    res.redirect('/signin');
+  }
 })
 
 app.get('/composeBtn', (req, res) => {
   res.redirect('/compose')
 })
 
-app.get('/signin', (req, res) => {
-  res.render('signin', {
-    signInMessage: signIn
-  });
-})
-
-app.post('/compose', (req, res) => {
-  let submissionTitle = req.body.postTitle;
-  let submissionPost = req.body.postBody;
-  newPost.push({
-    title: submissionTitle,
-    post: submissionPost
-  });
-  console.log(newPost);
+app.get('/logout',(req,res)=>{
+  req.logout();
   res.redirect('/');
 })
 
-app.post('/signin', (req, res) => {
-  if (req.body.password === process.env.password) {
-    authenticated = true;
-    res.redirect('/');
-  } else {
-    signIn = "Incorrect password, please try again";
-    res.redirect('/signin');
-  }
+app.get('/signin', (req, res) => {
+  res.render('signin');
 })
 
-app.listen(process.env.PORT, function () {
+app.get('/register', (req, res) => {
+  res.render('register')
+});
+
+
+
+app.post('/compose', (req, res) => {
+  const newPost = new blogPost({
+    name: lodash.capitalize(req.body.postTitle),
+    post: req.body.postBody,
+    user: req.user.username
+  });
+  newPost.save();
+  res.redirect('/home');
+})
+
+app.post('/register', (req, res) => {
+  bcrypt.hash(req.body.password, saltRounds, (err, hash) => {
+    if (!err) {
+      newUser = new User({
+        username: req.body.username,
+        password: hash
+      })
+
+      newUser.save((err) => {
+        if (!err) {
+          console.log("New user created successfully");
+          passport.authenticate("local")(req, res, () => {
+            res.redirect('/home');
+          });
+        } else {
+          console.log(`Error occured while registering users: ${err}`);
+          res.redirect('/register');
+        }
+      })
+    }
+  })
+});
+
+app.post('/signin',
+  passport.authenticate("local", {
+    failureRedirect: '/signin'
+  }), (req, res) => {
+    console.log(req.user.username);
+    res.redirect('/home');
+  }
+);
+
+
+app.listen(process.env.PORT || 3000, function () {
   console.log("Server started on port 3000");
 });

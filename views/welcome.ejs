@@ -1,0 +1,11 @@
+<%- include('partials/header.ejs') %>
+
+<h1>Welcome</h1>
+<p>Welcome to WebDev, Please sign in or register to view content.</p>
+<form class ="spaced" action="/signin" method="get">
+    <button class="btn" type="submit">Sign In</button>
+</form>
+<form class="spaced" action="/register" method="get">
+    <button class="btn" type="submit">Register</button>
+</form>
+<%- include('partials/footer.ejs') %>

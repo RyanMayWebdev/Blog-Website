@@ -9,7 +9,6 @@ a:visited {
 .btn {
     background-color: #1abc9c;
     color: #fff;
-    margin: 20px 0;
 }
 
 .btn a {
@@ -73,7 +72,12 @@ h1 {
     width: 90%;
 }
 
+.spaced{
+    margin: 10px 0;
+}
+
 textarea {
     display: block;
+    margin: 20px 0;
     width: 100%;
 }

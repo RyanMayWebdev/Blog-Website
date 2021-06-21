@@ -1,17 +1,15 @@
-<%- include('partials/header.ejs') %>
+<%- include('partials/headerLoggedIn.ejs') %>
 
 <h1>Home</h1>
-<p><%= homeContent %></p>
 
-<% post.forEach((index)=>{ %>
-<h3><%= index.title %></h3>
-<p><%= index.post.slice(0,100) %> ...<a href="/posts/<%= index.title %>">  Read More</a></p>
+
+<% posts.forEach((post)=>{ %>
+<h3><%= post.name %></h3>
+<p><%= post.post.slice(0,100) %> ...<a href="/posts/<%= post.name %>">  Read More</a></p>
+<p>Posted by: <%= post.user %></p>
 <% }) %>
-<% if (!passwordCorrect) { %>
-<button class="btn"><a href="/signin">Sign In</a></button>
-<% }else{ %>
 <form action="/composeBtn" method="get">
     <button class="btn" type="submit">Compose</button>
 </form>
-<% } %>
+
 <%- include('partials/footer.ejs') %>
